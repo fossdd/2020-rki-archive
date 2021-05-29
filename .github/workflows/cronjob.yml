@@ -1,0 +1,44 @@
+name: Save
+
+on:
+  schedule:
+    - cron: "0 0,6,12,18 * * *"
+  push:
+    branches: [ "*" ]
+  workflow_dispatch:
+
+jobs:
+  save:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Preparing branches and remotes
+        run: |-
+          git config pull.rebase true
+          git fetch
+          git checkout master
+          git remote add upstream https://github.com/ard-data/2020-rki-archive
+          git fetch upstream
+          git rebase upstream/master
+          git push origin master
+          git checkout new
+          git lfs install
+          git config --global user.email "${{ secrets.GIT_EMAIL }}"
+          git config --global user.name  "${{ secrets.GIT_NAME  }}"
+
+      - name: Install dependencies
+        run: |-
+          yarn
+
+      - name: Run
+        run: |-
+          mkdir -p data/0_archived data/1_ignored data/2_parsed
+          bash bin/run.sh
+
+      - name: Commit & Push
+        run: |-
+          git add data
+          git commit -m 'automatic data update'
+          git push origin new
